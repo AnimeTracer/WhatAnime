@@ -17,7 +17,6 @@
             height: 0;
             padding-bottom: 56%;
         }
-
         .imgborder #img_area, #video_area{
             position: absolute;
             width: 100%;
@@ -38,7 +37,6 @@
             animation-iteration-count: infinite;
             visibility: hidden;
         }
-
         @keyframes ripple {
             0% {
                 width: 0;
@@ -48,7 +46,6 @@
                 border-color: #fff;
                 opacity: 1
             }
-
             100% {
                 width: 800px;
                 height: 800px;
@@ -61,7 +58,6 @@
         .anime-position {
             height: 8px;
         }
-
         .btn-file{
             position: relative;
         }
@@ -129,88 +125,86 @@
     <input type="text" class="form-control " placeholder="请输入需要查询图片的URL">
 </div>
 
-
-
 <!-- ZUI Javascript 依赖 jQuery -->
 <script src="lib/jquery/jquery.js"></script>
 <!-- ZUI 标准版压缩后的 JavaScript 文件 -->
 <script src="js/zui.min.js"></script>
 <script type="text/javascript">
-    var at = document.getElementById("at");
-    var resultArea = document.getElementById("result");
-    var ripple_area = document.getElementById("ripple");
-    var img_area = document.getElementById("img_area");
-    var video_area = document.getElementById("video_area");
-    window.onload = function () {
-        // 抓取上传图片，转换代码结果，显示图片的dom
-        var img_upload = document.getElementById("img_upload");
 
-        // 添加功能出发监听事件
-        img_upload.addEventListener('change', readFile, false);
-    };
+
+
+    $("#img_upload").change(readFile);          //添加上传图片监听
     $('[data-toggle="tooltip"]').tooltip();     //添加播放时间显示监听
+
     function readFile() {
+        var at = document.getElementById("at");
+        var resultArea = document.getElementById("result");
+        var ripple_area = document.getElementById("ripple");
+        var img_area = document.getElementById("img_area");
+        var video_area = document.getElementById("video_area");
+
         var file = this.files[0];
+
         if (!/image\/\w+/.test(file.type)) {
-            alert("请确保文件为图像类型");
-            return false;
+            alert("请选择图片文件！");
+            return;
         }
         var reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = function () {
-            if (this.result.length > 1048576) {
-                alert("请选择小于1MB的图片！");
-                return;
-            }
+            img_area.src = this.result;
+            //修改盒子可视
 
-            img_area.style.display = "block";
             video_area.style.visibility = "hidden";
             img_area.style.visibility = "visible";
             ripple_area.style.visibility = "visible";
-            img_area.src = this.result;
-            console.log({"image": this.result});
 
-            //AJAX
-            var xhr = new XMLHttpRequest();             //STEP1
-
-            xhr.onreadystatechange = function () {      //STEP2
-                if (xhr.readyState == 4) {
-                    var animeResult = JSON.parse(xhr.responseText);
-                    console.log(animeResult);
-                    var res0 = animeResult.docs[0];
-                    resultArea.innerHTML = "这部番是" + res0.title_chinese;
-
-                    //设置播放进度和时间
-                    var prog = Math.round(res0.at / 1500 * 100);
-                    at.style.width = prog + "%";
-                    var time = Math.round(res0.at);
-                    var h = Math.floor(time / 3600);
-                    var m = Math.floor((time / 60 % 60));
-                    var s = Math.floor((time % 60));
-                    var result = h + "时" + m + "分" + s + "秒";
-                    at.setAttribute("data-original-title", result);
-
-                    //获取动态图
-                    //https://trace.moe/preview.php?anilist_id=${anilist_id}&file=${encodeURIComponent(filename)}&t=${at}&token=${tokenthumb}
-
-                    video_area.poster = "https://trace.moe/thumbnail.php?anilist_id=" + res0.anilist_id + "&file=" + encodeURIComponent(res0.filename) + "&t=" + res0.at + "&token=" + res0.tokenthumb;
-                    video_area.src = "https://trace.moe/preview.php?anilist_id=" + res0.anilist_id + "&file=" + encodeURIComponent(res0.filename) + "&t=" + res0.at + "&token=" + res0.tokenthumb;
-                    video_area.style.visibility = "visible";
-                    img_area.style.visibility = "hidden";
-                    ripple_area.style.visibility = "hidden";
-                    var anilist_id = res0.anilist_id;
-                    var filename = encodeURIComponent(filename);
-
-                    handleResult(res0);
+            //使用Canvas压缩尺寸转化图片格式
+            var canvas = document.createElement("canvas");
+            canvas.width = img_area.width;
+            canvas.height = img_area.height;
+            var ctx = canvas.getContext("2d");
+            img_area.onload = function() {
+                ctx.drawImage(img_area, 0, 0, canvas.width, canvas.height);
+                console.log(canvas.toDataURL('image/jpeg', 0.6));
+                if (canvas.toDataURL('image/jpeg', 0.6).length > 1048576) {
+                    alert("请选择小于1MB的图片！");
+                    return;
                 }
-            };
-
-            xhr.open("post", "https://trace.moe/api/search", true);     //STEP3
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.send(JSON.stringify({"image": this.result}));         //STEP4
-
+                //AJAX
+                var xhr = new XMLHttpRequest();             //STEP1
+                xhr.onreadystatechange = function () {      //STEP2
+                    if (xhr.readyState == 4) {
+                        var animeResult = JSON.parse(xhr.responseText);
+                        console.log(animeResult);
+                        var res0 = animeResult.docs[0];
+                        resultArea.innerHTML = "这部番是" + res0.title_chinese;
+                        //设置播放进度和时间
+                        var prog = Math.round(res0.at / 1500 * 100);
+                        at.style.width = prog + "%";
+                        var time = Math.round(res0.at);
+                        var h = Math.floor(time / 3600);
+                        var m = Math.floor((time / 60 % 60));
+                        var s = Math.floor((time % 60));
+                        var result = h + "时" + m + "分" + s + "秒";
+                        at.setAttribute("data-original-title", result);
+                        //获取动态图
+                        //https://trace.moe/preview.php?anilist_id=${anilist_id}&file=${encodeURIComponent(filename)}&t=${at}&token=${tokenthumb}
+                        video_area.poster = "https://trace.moe/thumbnail.php?anilist_id=" + res0.anilist_id + "&file=" + encodeURIComponent(res0.filename) + "&t=" + res0.at + "&token=" + res0.tokenthumb;
+                        video_area.src = "https://trace.moe/preview.php?anilist_id=" + res0.anilist_id + "&file=" + encodeURIComponent(res0.filename) + "&t=" + res0.at + "&token=" + res0.tokenthumb;
+                        video_area.style.visibility = "visible";
+                        img_area.style.visibility = "hidden";
+                        ripple_area.style.visibility = "hidden";
+                        var anilist_id = res0.anilist_id;
+                        var filename = encodeURIComponent(filename);
+                        handleResult(res0);
+                    }
+                };
+                xhr.open("post", "https://trace.moe/api/search", true);     //STEP3
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send(JSON.stringify({"image": canvas.toDataURL('image/jpeg', 0.6)}));         //STEP4
+            }
         };
-
         function handleResult(res0) {
             var xhr = new XMLHttpRequest();
             xhr.onreadystatechange = function () {
@@ -219,13 +213,11 @@
                     console.log(animeResult);
                 }
             };
-
             //https://api.bgm.tv/search/subject/徒然CHILDREN?type=2&responseGroup=large
-            xhr.open("get", "https://api.bgm.tv/search/subject/" + encodeURIComponent(res0.title) + "?type=2&responseGroup=large", true);
+            xhr.open("get", "https://api.animetracer.com/search/subject/" + encodeURIComponent(res0.title) + "?type=2&responseGroup=large", true);
             xhr.send(null);
         }
     }
-
 </script>
 </body>
 
