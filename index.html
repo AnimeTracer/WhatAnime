@@ -9,6 +9,8 @@
     <!-- zui -->
     <!-- ZUI 标准版压缩后的 CSS 文件 -->
     <link rel="stylesheet" href="css/zui.min.css">
+    <link rel="stylesheet" href="css/zui-theme.css">
+
     <style>
         .imgborder {
             position: relative;
@@ -17,7 +19,8 @@
             height: 0;
             padding-bottom: 56%;
         }
-        .imgborder #img_area, #video_area{
+
+        .imgborder #img_area, #video_area {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -25,6 +28,7 @@
             top: 0;
             visibility: hidden;
         }
+
         .ripple {
             position: relative;
             left: 150px;
@@ -37,6 +41,7 @@
             animation-iteration-count: infinite;
             visibility: hidden;
         }
+
         @keyframes ripple {
             0% {
                 width: 0;
@@ -55,12 +60,15 @@
                 opacity: 0
             }
         }
+
         .anime-position {
             height: 8px;
         }
-        .btn-file{
+
+        .btn-file {
             position: relative;
         }
+
         .btn-file input[type=file] {
             position: absolute;
             top: 0;
@@ -80,7 +88,6 @@
         <div class="navbar-header">
             <!-- 移动设备上的导航切换按钮 -->
             <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse-example">
-                <span class="sr-only">切换导航</span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
@@ -92,7 +99,7 @@
         <div class="collapse navbar-collapse navbar-collapse-example">
             <!-- 一般导航项目 -->
             <ul class="nav navbar-nav">
-                <li class="active"><a href="#">以图搜番</a></li>
+                <li class="active"><a href="//animetracer.com">以图搜番</a></li>
                 <li><a href="#">番剧库</a></li>
 
                 <!-- 导航中的下拉菜单 -->
@@ -118,11 +125,26 @@
              style="width: 0" data-placement="bottom" data-toggle="tooltip"></div>
     </div>
 
-    <span class="btn btn-primary btn-file"><i class="icon icon-cloud-upload"></i> 选择文件<input type="file" class="form-control" id="img_upload"></span>
-    <div class="result" id="result"></div>
-</div>
-<div class="container">
-    <input type="text" class="form-control " placeholder="请输入需要查询图片的URL">
+    <span class="btn btn-primary btn-file"><i class="icon icon-cloud-upload"></i> 选择图片并搜索<input type="file"
+                                                                                                class="form-control"
+                                                                                                id="img_upload"></span>
+    <!--<span>可以通过左侧按钮上传本地图片或者在下方的搜索框中输入图片URL进行搜索</span>-->
+    <!--<div class="input-group">-->
+        <!--<div class="input-control search-box has-icon-left has-icon-right search-example" id="searchboxExample">-->
+            <!--<input id="inputSearchExample4" type="search" class="form-control search-input" placeholder="请输入需要查询图片的URL">-->
+            <!--<label for="inputSearchExample4" class="input-control-icon-left search-icon"><i-->
+                    <!--class="icon icon-search"></i></label>-->
+        <!--</div>-->
+        <!--<span class="input-group-btn"><button class="btn btn-primary" type="button">搜索</button></span>-->
+    <!--</div>-->
+
+    <div class="result" id="result">
+        <div class="col-lg-8" id = "bangumiInfo"></div>
+        <div class="col-lg-4" id = "bangumiImg"></div>
+        <div class="col-lg-12" id = "bangumiStory"></div>
+        <div class="col-lg-6" id = "bangumiStaff"></div>
+        <div class="col-lg-6" id = "bangumiCast"></div>
+    </div>
 </div>
 
 <!-- ZUI Javascript 依赖 jQuery -->
@@ -132,13 +154,11 @@
 <script type="text/javascript">
 
 
-
     $("#img_upload").change(readFile);          //添加上传图片监听
     $('[data-toggle="tooltip"]').tooltip();     //添加播放时间显示监听
 
     function readFile() {
         var at = document.getElementById("at");
-        var resultArea = document.getElementById("result");
         var ripple_area = document.getElementById("ripple");
         var img_area = document.getElementById("img_area");
         var video_area = document.getElementById("video_area");
@@ -164,21 +184,22 @@
             canvas.width = img_area.width;
             canvas.height = img_area.height;
             var ctx = canvas.getContext("2d");
-            img_area.onload = function() {
+            img_area.onload = function () {
                 ctx.drawImage(img_area, 0, 0, canvas.width, canvas.height);
                 console.log(canvas.toDataURL('image/jpeg', 0.6));
                 if (canvas.toDataURL('image/jpeg', 0.6).length > 1048576) {
                     alert("请选择小于1MB的图片！");
                     return;
                 }
+
                 //AJAX
-                var xhr = new XMLHttpRequest();             //STEP1
-                xhr.onreadystatechange = function () {      //STEP2
-                    if (xhr.readyState == 4) {
-                        var animeResult = JSON.parse(xhr.responseText);
+                $.ajax("https://trace.moe/api/search", {
+                    "type": "POST",
+                    "data": JSON.stringify({"image": canvas.toDataURL('image/jpeg', 0.6)}),
+                    "contentType": "application/json",
+                    "success": function (animeResult) {
                         console.log(animeResult);
                         var res0 = animeResult.docs[0];
-                        resultArea.innerHTML = "这部番是" + res0.title_chinese;
                         //设置播放进度和时间
                         var prog = Math.round(res0.at / 1500 * 100);
                         at.style.width = prog + "%";
@@ -195,27 +216,53 @@
                         video_area.style.visibility = "visible";
                         img_area.style.visibility = "hidden";
                         ripple_area.style.visibility = "hidden";
-                        var anilist_id = res0.anilist_id;
-                        var filename = encodeURIComponent(filename);
                         handleResult(res0);
                     }
-                };
-                xhr.open("post", "https://trace.moe/api/search", true);     //STEP3
-                xhr.setRequestHeader("Content-Type", "application/json");
-                xhr.send(JSON.stringify({"image": canvas.toDataURL('image/jpeg', 0.6)}));         //STEP4
+                });
             }
         };
+
         function handleResult(res0) {
-            var xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState == 4) {
-                    var animeResult = JSON.parse(xhr.responseText);
-                    console.log(animeResult);
-                }
-            };
-            //https://api.bgm.tv/search/subject/徒然CHILDREN?type=2&responseGroup=large
-            xhr.open("get", "https://api.animetracer.com/search/subject/" + encodeURIComponent(res0.title) + "?type=2&responseGroup=large", true);
-            xhr.send(null);
+
+            $.get("https://api.animetracer.com/search/subject/" + encodeURIComponent(res0.title), {"type": "2&responseGroup=small"}, function (data1) {
+                $.get("https://api.animetracer.com/subject/" + data1.list[0].id, "responseGroup=large", function (data2) {
+                    console.log(data2);
+
+                    var $info = $("#bangumiInfo");
+                    $info.html("<div class=\"page-header\"><h2>番剧信息</h2></div>");
+                    $info.append("<p>番剧名称："+ data2.name_cn + "</p>");
+                    $info.append("<p>截图话："+ res0.episode +"话</p>");
+                    $info.append("<p>bangumi评分："+ data2.rating.score + "</p>");
+
+                    var $img = $("#bangumiImg");
+                    $img.html("<img src='"+ data2.images.large.replace("http://","https://") + "' class=\"img-thumbnail\" alt="+data2.name_cn+">");
+
+                    var $story = $("#bangumiStory");
+                    $story.html("<div class=\"page-header\"><h2>故事简介</h2></div>");
+                    $story.append("<p>"+ data2.summary + "</p>");
+
+                    var $staff = $("#bangumiStaff");
+                    $staff.html("<div class=\"page-header\"><h2>STAFF</h2></div>");
+                    $staff.append("<ul></ul>");
+                    for (var i = 0 ; i<data2.staff.length; i++){
+                        if (data2.staff[i].jobs.name_cn == undefined){
+                            var name = data2.staff[i].name;
+                        }else{
+                            var name = data2.staff[i].name_cn;
+                        }
+                        $staff.children("ul").append("<li>"+ data2.staff[i].jobs + "：" +  name + "</li>")
+                    }
+
+                    var $cast = $("#bangumiCast");
+                    $cast.html("<div class=\"page-header\"><h2>CAST</h2></div>");
+                    $cast.append("<ul></ul>");
+                    for (var i = 0 ; i<data2.crt.length; i++){
+                        $cast.children("ul").append("<li>"+ data2.crt[i].name_cn + "：" +  data2.crt[i].actors[0].name + "</li>")
+                    }
+
+
+                });
+            });
         }
     }
 </script>
